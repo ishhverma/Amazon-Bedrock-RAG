@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Enterprise AI Knowledge Assistant | Bedrock RAG</title>
+    <!-- Google Fonts & Font Awesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(145deg, #f6f9fc 0%, #eef2f7 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+
+        /* Main App Container */
+        .app-container {
+            width: 100%;
+            max-width: 1400px;
+            height: 90vh;
+            background: white;
+            border-radius: 2rem;
+            box-shadow: 0 25px 45px -12px rgba(0, 0, 0, 0.25);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        /* Header */
+        .chat-header {
+            background: #0a1e2f;
+            color: white;
+            padding: 1.2rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .logo-icon {
+            background: #2c7da0;
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        .logo-text h2 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+        .logo-text p {
+            font-size: 0.75rem;
+            opacity: 0.8;
+        }
+        .status-badge {
+            background: #1e3a4d;
+            padding: 0.4rem 1rem;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background: #2ecc71;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.4; transform: scale(0.9);}
+            100% { opacity: 1; transform: scale(1.2);}
+        }
+
+        /* Chat Messages Area */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem 1.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            background: #fefefe;
+        }
+
+        /* Custom scrollbar */
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-messages::-webkit-scrollbar-track {
+            background: #e9ecef;
+            border-radius: 10px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #adb5bd;
+            border-radius: 10px;
+        }
+
+        /* Message Bubbles */
+        .message {
+            display: flex;
+            gap: 1rem;
+            max-width: 85%;
+            animation: fadeSlideUp 0.25s ease-out;
+        }
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(10px);}
+            to { opacity: 1; transform: translateY(0);}
+        }
+        .user-message {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+        .bot-message {
+            align-self: flex-start;
+        }
+        .avatar {
+            width: 38px;
+            height: 38px;
+            background: #eef2ff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        .user-message .avatar {
+            background: #0a1e2f;
+            color: white;
+        }
+        .bot-message .avatar {
+            background: #d4e6f1;
+            color: #1f5e7e;
+        }
+        .message-bubble {
+            background: white;
+            padding: 0.9rem 1.2rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            border: 1px solid #e9ecef;
+            line-height: 1.5;
+            font-size: 0.95rem;
+        }
+        .user-message .message-bubble {
+            background: #0a1e2f;
+            color: white;
+            border-radius: 1.5rem 1.5rem 0.2rem 1.5rem;
+        }
+        .bot-message .message-bubble {
+            border-radius: 1.5rem 1.5rem 1.5rem 0.2rem;
+        }
+        .citation-area {
+            margin-top: 12px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 0.5rem 0.8rem;
+            font-size: 0.75rem;
+            border-left: 3px solid #2c7da0;
+        }
+        .citation-title {
+            font-weight: 600;
+            color: #2c7da0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .citation-list {
+            margin-top: 8px;
+            padding-left: 1rem;
+            display: none;
+        }
+        .citation-list.show {
+            display: block;
+        }
+        .citation-item {
+            font-family: monospace;
+            background: #e9ecef;
+            padding: 0.2rem 0.5rem;
+            border-radius: 8px;
+            margin: 4px 0;
+            word-break: break-all;
+            font-size: 0.7rem;
+        }
+
+        /* Typing indicator */
+        .typing-indicator {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            padding: 0.5rem 1rem;
+        }
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #6c757d;
+            border-radius: 50%;
+            animation: blink 1.4s infinite;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes blink {
+            0%, 60%, 100% { opacity: 0.3; transform: translateY(0);}
+            30% { opacity: 1; transform: translateY(-5px);}
+        }
+
+        /* Input area */
+        .input-container {
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            padding: 1.2rem 1.8rem;
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+        }
+        .input-wrapper {
+            flex: 1;
+            background: #f1f5f9;
+            border-radius: 2rem;
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transition: all 0.2s;
+        }
+        .input-wrapper:focus-within {
+            background: white;
+            box-shadow: 0 0 0 2px #2c7da0;
+        }
+        textarea {
+            flex: 1;
+            border: none;
+            background: transparent;
+            resize: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            outline: none;
+            max-height: 120px;
+            padding: 0.4rem 0;
+        }
+        button {
+            background: #0a1e2f;
+            border: none;
+            color: white;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+        }
+        button:hover:not(:disabled) {
+            background: #1e4a6e;
+            transform: scale(1.02);
+        }
+        button:disabled {
+            background: #b0c4de;
+            cursor: not-allowed;
+        }
+        .example-questions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            margin-top: 0.5rem;
+            padding: 0 0.2rem;
+        }
+        .example-chip {
+            background: #eef2ff;
+            padding: 0.3rem 0.9rem;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #1f5e7e;
+        }
+        .example-chip:hover {
+            background: #d4e6f1;
+        }
+
+        /* Footer */
+        .footer-note {
+            font-size: 0.7rem;
+            text-align: center;
+            padding: 0.5rem;
+            background: #f8fafc;
+            color: #4b5563;
+            border-top: 1px solid #e9ecef;
+        }
+
+        @media (max-width: 680px) {
+            .message { max-width: 95%; }
+            .chat-header { padding: 0.8rem 1rem; }
+            .chat-messages { padding: 1rem; }
+            .input-container { padding: 0.8rem 1rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <div class="chat-header">
+        <div class="logo-area">
+            <div class="logo-icon"><i class="fas fa-brain"></i></div>
+            <div class="logo-text">
+                <h2>Enterprise RAG Assistant</h2>
+                <p>Powered by Amazon Bedrock Knowledge Bases</p>
+            </div>
+        </div>
+        <div class="status-badge">
+            <span class="status-dot"></span>
+            <span>Bedrock · Secure RAG</span>
+        </div>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+        <!-- Welcome message -->
+        <div class="message bot-message">
+            <div class="avatar"><i class="fas fa-robot"></i></div>
+            <div class="message-bubble">
+                Hello! I'm your enterprise knowledge assistant.<br>
+                I can answer questions based on your internal documents, policies, and technical guides.<br>
+                <strong>Try asking:</strong> <span style="background:#eef2ff; padding:0 4px; border-radius:12px;">"What is our remote work policy?"</span> or 
+                <span style="background:#eef2ff; padding:0 4px; border-radius:12px;">"Summarize the Q3 security report"</span>
+                <div class="citation-area" style="margin-top:8px;">
+                    <i class="fas fa-file-alt"></i> All answers include document citations.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="input-container">
+        <div style="flex:1">
+            <div class="input-wrapper">
+                <i class="fas fa-comment-dots" style="color:#2c7da0;"></i>
+                <textarea id="userInput" placeholder="Ask anything about internal company knowledge..." rows="1"></textarea>
+                <button id="sendBtn"><i class="fas fa-paper-plane"></i></button>
+            </div>
+            <div class="example-questions">
+                <div class="example-chip" data-question="What are the main company security policies?">🔐 Security policies</div>
+                <div class="example-chip" data-question="Summarize the latest HR benefits update">📄 HR benefits</div>
+                <div class="example-chip" data-question="How do I request IT support?">💻 IT support process</div>
+                <div class="example-chip" data-question="List the steps for expense reimbursement">💰 Expense reimbursement</div>
+            </div>
+        </div>
+    </div>
+    <div class="footer-note">
+        <i class="fas fa-shield-alt"></i> Responses are grounded in your proprietary documents · No hallucinations · Citations provided
+    </div>
+</div>
+
+<script>
+    // ---------- CONFIGURATION ----------
+    // Replace this endpoint with your actual backend API that integrates with Amazon Bedrock Knowledge Bases
+    // The API should accept POST { "question": "user query" } and return { "answer": "...", "citations": ["s3://path/doc1.pdf", ...] }
+    const API_ENDPOINT = "/api/query";   // <-- UPDATE with your backend URL (e.g., EC2 or API Gateway)
+
+    // DOM elements
+    const chatContainer = document.getElementById('chatMessages');
+    const userInput = document.getElementById('userInput');
+    const sendButton = document.getElementById('sendBtn');
+
+    // Helper: Auto-resize textarea
+    userInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    });
+
+    // Send message
+    async function sendMessage(question) {
+        if (!question.trim()) return;
+
+        // Disable UI
+        sendButton.disabled = true;
+        userInput.disabled = true;
+
+        // Append user message
+        appendMessage('user', question);
+        userInput.value = '';
+        userInput.style.height = 'auto';
+
+        // Show typing indicator
+        const typingId = showTypingIndicator();
+
+        try {
+            const response = await fetch(API_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question: question })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server responded with ${response.status}`);
+            }
+
+            const data = await response.json();
+            // Expected structure: { answer: string, citations?: string[] }
+            const answer = data.answer || "No answer received.";
+            const citations = data.citations || [];
+
+            // Remove typing indicator
+            removeTypingIndicator(typingId);
+
+            // Append bot response with citations
+            appendMessage('bot', answer, citations);
+
+        } catch (error) {
+            console.error('API Error:', error);
+            removeTypingIndicator(typingId);
+            appendMessage('bot', `⚠️ Unable to reach the knowledge base backend. Please ensure your API endpoint is configured correctly.\n\nError: ${error.message}`, []);
+        } finally {
+            sendButton.disabled = false;
+            userInput.disabled = false;
+            userInput.focus();
+            scrollToBottom();
+        }
+    }
+
+    // Append a message to chat
+    function appendMessage(role, text, citations = []) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${role === 'user' ? 'user-message' : 'bot-message'}`;
+
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar';
+        avatar.innerHTML = role === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
+
+        const bubbleDiv = document.createElement('div');
+        bubbleDiv.className = 'message-bubble';
+        // Preserve line breaks
+        bubbleDiv.innerHTML = text.replace(/\n/g, '<br>');
+
+        // Add citations area if bot and citations exist
+        if (role === 'bot' && citations && citations.length > 0) {
+            const citationWrapper = document.createElement('div');
+            citationWrapper.className = 'citation-area';
+            const titleSpan = document.createElement('div');
+            titleSpan.className = 'citation-title';
+            titleSpan.innerHTML = '<i class="fas fa-link"></i> 📚 View sources (' + citations.length + ')';
+            const citationList = document.createElement('div');
+            citationList.className = 'citation-list';
+            citations.forEach(cite => {
+                const item = document.createElement('div');
+                item.className = 'citation-item';
+                item.innerHTML = `<i class="fas fa-file-pdf"></i> ${cite}`;
+                citationList.appendChild(item);
+            });
+            titleSpan.addEventListener('click', () => {
+                citationList.classList.toggle('show');
+            });
+            citationWrapper.appendChild(titleSpan);
+            citationWrapper.appendChild(citationList);
+            bubbleDiv.appendChild(citationWrapper);
+        }
+
+        messageDiv.appendChild(avatar);
+        messageDiv.appendChild(bubbleDiv);
+        chatContainer.appendChild(messageDiv);
+        scrollToBottom();
+    }
+
+    // Typing indicator management
+    let typingElement = null;
+    function showTypingIndicator() {
+        if (typingElement) typingElement.remove();
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'message bot-message';
+        typingDiv.id = 'typingIndicator';
+        typingDiv.innerHTML = `
+            <div class="avatar"><i class="fas fa-robot"></i></div>
+            <div class="message-bubble">
+                <div class="typing-indicator">
+                    <span></span><span></span><span></span>
+                    <span style="margin-left:8px; font-size:0.75rem;">Retrieving from knowledge base...</span>
+                </div>
+            </div>
+        `;
+        chatContainer.appendChild(typingDiv);
+        scrollToBottom();
+        typingElement = typingDiv;
+        return 'typing';
+    }
+
+    function removeTypingIndicator(id) {
+        const el = document.getElementById('typingIndicator');
+        if (el) el.remove();
+        typingElement = null;
+    }
+
+    function scrollToBottom() {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // Event listeners
+    sendButton.addEventListener('click', () => {
+        sendMessage(userInput.value);
+    });
+
+    userInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage(userInput.value);
+        }
+    });
+
+    // Example question chips
+    document.querySelectorAll('.example-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const question = chip.getAttribute('data-question');
+            if (question) sendMessage(question);
+        });
+    });
+
+    // Initial focus
+    userInput.focus();
+</script>
+</body>
+</html>
